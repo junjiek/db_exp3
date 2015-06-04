@@ -9,9 +9,11 @@ using namespace std;
 class Node {
 public:
     std::vector<pair<string, int>> leftStrs, rightStrs;
+    Node* next;
     Node* parent;
     bool sorted;
     char c;
+    int depth;
     unordered_map<char, Node*> children;
     bool isLeaf;
     bool hasChild(char c);

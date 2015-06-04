@@ -24,10 +24,19 @@ const int FAILURE = 1;
 class AEE {
     std::vector<std::string> entities;
     int Lmin, Lmax;
+    int ** M;
     Node* root;
     void buildTrie(const int threshold);
-    Node* insert(Node* parent, string& s, int pos);
+    Node* insert(string& s);
     void printTree(Node* p, int depth);
+    Node* search(string& str);
+    void buildNext(Node* t, Node* j);
+    void buildNext();
+    int maxCommonPrefixLen(std::vector<pair<string, int>>& rightStrs, int cur, int pre, int bound);
+    int maxCommonSuffixLen(std::vector<pair<string, int>>& leftStrs, int cur, int pre, int bound);
+    void extension(Node* p, string& D, int right, int left, int threshold, vector<EDExtractResult> &result);
+
+
 public:
     AEE();
     ~AEE();

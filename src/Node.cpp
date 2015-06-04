@@ -5,6 +5,7 @@ using namespace std;
 Node::Node(Node* parent, char c) {
     isLeaf = false;
     sorted = false;
+    next = NULL;
     this->parent = parent;
     this->c = c;
 }
