@@ -37,6 +37,7 @@ class AEE {
     void extension(Node* p, string& D, int right, int left, int threshold, vector<EDExtractResult> &result);
     void printTree(Node* p, int depth);
     void printM(int num, int threshold);
+    int getEditDistance(const string &A, const string &B, int threshold);
 
 public:
     AEE();

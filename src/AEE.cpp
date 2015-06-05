@@ -4,6 +4,7 @@
 #include <climits>
 #include <iostream>
 #include <algorithm>
+#include <cstring>
 
 using namespace std;
 
@@ -296,11 +297,11 @@ void AEE::extension(Node* p, string& D, int left, int right, int threshold, vect
             // printM(elLen, threshold2);
             for (int k = 0; k <= 2 * threshold2; k++) {
                 int ED = M[elLen][k];
-
                 if (ED <= threshold2) {
                     for (auto& p : ED_end) {
                         if (p.first + ED > threshold)
                             break;
+
                         int start = left + 1 - elLen + threshold2 - k;
                         if (start >= 0 && start <= left + 1) {
                             // printf("start: %d, left: %d\n", start, left);
@@ -308,8 +309,16 @@ void AEE::extension(Node* p, string& D, int left, int right, int threshold, vect
                             res.id = leftStrs[i].second;
                             res.pos = start;
                             res.len = p.second - start + 1;
-                            res.sim = p.first + ED;
-                            result.push_back(res);
+                            // res.sim = p.first + ED;
+                            int realED = getEditDistance(entities[leftStrs[i].second], D.substr(res.pos, res.len), threshold);
+                            if (realED <= threshold) {
+                                res.sim = realED;
+                                result.push_back(res);
+                            }
+                            // if (realED != res.sim) {
+                            //     printf("real: %d, res.sim: %d\n", realED, res.sim);
+                            //     cout << entities[leftStrs[i].second] << " " << D.substr(res.pos, res.len) << endl;
+                            // }
                             // printf("l: id:%d (%s|%s) ed:%d\n",  res.id, leftStrs[i].first.c_str(),
                             //     D.substr(start, left - start + 1).c_str(), ED);
                             // cout << "res: " << start << "," << p.second << " " << D.substr(start, res.len) << endl;
@@ -320,6 +329,29 @@ void AEE::extension(Node* p, string& D, int left, int right, int threshold, vect
         }
     }
 
+}
+
+int AEE::getEditDistance(const string &A, const string &B, int threshold) {
+    int n = (int)A.length();
+    int m = (int)B.length();
+    if (abs(n - m) > threshold) return threshold + 1;
+    int V[2][threshold * 2 + 3];
+    memset(V, 0x80, sizeof(V));
+
+    V[1][threshold] = 0;
+    for (int p = 0; p <= threshold; ++p) {
+        int *f = V[p & 1];
+        int *g = V[!(p & 1)];
+        for (int k = threshold + 1 - p; k <= threshold + 1 + p; ++k) {
+            f[k] = max(max(g[k], g[k + 1]) + 1, g[k - 1]);
+            int &t = f[k];
+            int d = k - threshold - 1;
+            if (t >= 0 && t + d >= 0)
+                while (t < n && t + d < m && A[t] == B[t + d]) ++t; 
+        }
+        if (f[m - n + threshold + 1] >= n) return p;
+    }
+    return threshold + 1;
 }
 
 bool resultCmpED(const EDExtractResult& res1, const EDExtractResult& res2) {
@@ -348,39 +380,41 @@ int AEE::aeeED(const char *document, unsigned threshold, vector<EDExtractResult>
     // vector<Node*> candidates;
 
     // KMP Match
-    buildNext();
+    // buildNext();
     // printTree(root, 0);
     Node* p = root;
     int i = 0;
 
-    while (i < len - (Lmin - (int)threshold) + 1) {
-        if (p->hasChild(doc[i])) {
-            p = p->children[doc[i]];
-            i ++;
-        } else if (p == root) {
-            i ++;
-        } else {
-            p = p->next;
-        }
-        if (p->isLeaf) {
-            // candidates.push_back(p);
-            // cout << "+ " << doc.substr(i - p->depth, p->depth) << endl;
-            extension(p, doc, i - p->depth - 1, i, (int)threshold, result);
-        }
-    }
-
-    // Naive Match
-    // for (int i = 0; i < len - (Lmin - (int)threshold) + 1; i++) {
-    //     Node* p = root;
-    //     int j = i;
-    //     while (p->hasChild(doc[j])) {
-    //         p = p->children[doc[j]];
-    //         if (p->isLeaf) {
-    //             cout << doc.substr(i, j-i+1) << endl;
-    //         }
-    //         j++;
+    // while (i < len - (Lmin - (int)threshold) + 1) {
+    //     if (p->hasChild(doc[i])) {
+    //         p = p->children[doc[i]];
+    //         i ++;
+    //     } else if (p == root) {
+    //         i ++;
+    //     } else {
+    //         p = p->next;
+    //     }
+    //     if (p->isLeaf) {
+    //         // candidates.push_back(p);
+    //         // cout << "+ " << doc.substr(i - p->depth, p->depth) << endl;
+    //         extension(p, doc, i - p->depth - 1, i, (int)threshold, result);
     //     }
     // }
+
+    // Naive Match
+    for (int i = 0; i < len ; i++) {
+        Node* p = root;
+        int j = i;
+        while (p->hasChild(doc[j])) {
+            p = p->children[doc[j]];
+            if (p->isLeaf) {
+                // cout << doc.substr(i, j-i+1) << endl;
+                extension(p, doc, i - 1, j + 1, (int)threshold, result);
+
+            }
+            j++;
+        }
+    }
     sort(result.begin(), result.end(), resultCmpED);
     result.erase(unique(result.begin(), result.end(), resultEqualED), result.end());
     return SUCCESS;
