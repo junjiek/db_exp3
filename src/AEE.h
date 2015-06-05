@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <string>
+#include <unordered_set>
 #include "Node.h"
 
 using namespace std;
@@ -20,17 +21,18 @@ typedef ExtractResult<unsigned, unsigned, unsigned, double> JaccardExtractResult
 
 const int SUCCESS = 0;
 const int FAILURE = 1;
+const long long HASH = 95891;
 
 class AEE {
     std::vector<std::string> entities;
+    unordered_set<long long> resultHashSet;
     int Lmin, Lmax;
     unsigned last_threshold;
     int ** M;
     Node* root;
+    long long Hash[3];
     void buildTrie(const int threshold);
     Node* insert(string& s);
-    Node* search(string& str);
-    void buildNext(Node* t, Node* j);
     void buildNext();
     int maxCommonPrefixLen(std::vector<pair<string, int>>& rightStrs, int cur, int pre, int bound);
     int maxCommonSuffixLen(std::vector<pair<string, int>>& leftStrs, int cur, int pre, int bound);

@@ -5,10 +5,14 @@
 #include <iostream>
 #include <algorithm>
 #include <cstring>
+#include <queue>
 
 using namespace std;
 
 AEE::AEE() {
+    Hash[0] = HASH;
+    Hash[1] = HASH * HASH;
+    Hash[2] = Hash[0] * Hash[1];
 }
 
 AEE::~AEE() {
@@ -17,6 +21,7 @@ AEE::~AEE() {
 const int maxED = 16;
 
 int AEE::createIndex(const char *entity_file_name) {
+
     Lmin = INT_MAX;
     Lmax = -1;
     entities.clear();
@@ -34,7 +39,8 @@ int AEE::createIndex(const char *entity_file_name) {
     M = new int* [Lmax];
     for(int i = 0; i < Lmax; i++)
         M[i] = new int[maxED];
-    last_threshold = -1;
+    last_threshold = 2;
+    buildTrie(last_threshold);
     return SUCCESS;
 }
 
@@ -77,34 +83,30 @@ void AEE::printTree(Node* p, int depth) {
     }
 }
 
-
-// Build KMP next
-void AEE::buildNext(Node* t, Node* j) {
-    if (t->hasChild(j->c)) {
-        t = t->children[j->c];
-        j->next = t;
-        for (auto& child : j->children) {
-            buildNext(t, child.second);
-        }
-    } else if (t == root) {
-        j->next = root;
-        for (auto& child : j->children) {
-            buildNext(root, child.second);
-        }
-    } else {
-        buildNext(t->next, j);
-    }
-}
 // Build KMP next
 void AEE::buildNext() {
+    queue<Node*> q;
     root->next = root;
     for (auto& child : root->children) {
         child.second->next = root;
+        q.push(child.second);
     }
-    for (auto& child : root->children)
-        for (auto& grandchild : child.second->children) {
-            buildNext(root, grandchild.second);
+    while (!q.empty()) {
+        Node* p = q.front();
+        q.pop();
+        for(auto& child : p->children) {
+            Node* p0 = p;
+            while (p0 != root && !p0->next->hasChild(child.first)) {
+                p0 = p0->next;
+            }
+            if (p0->next->hasChild(child.first))
+                child.second->next = p0->next->children[child.second->c];
+            else
+                child.second->next = root;
+            q.push(child.second);
+
         }
+    }
 }
 
 void AEE::buildTrie(const int threshold) {
@@ -138,15 +140,6 @@ void AEE::buildTrie(const int threshold) {
         // cout << endl;
     }
 }
-
-// Node* AEE::search(string& str) {
-//     Node* p = root;
-//     for (int i = 0; i < (int)str.length(); i++) {
-//         if (p->isLeaf && !p->hasChild)
-//         p = p->children[str[i]];
-//     }
-//     return p;
-// }
 
 int AEE::aeeJaccard(const char *document, double threshold, vector<JaccardExtractResult> &result) {
     result.clear();
@@ -188,6 +181,7 @@ void AEE::printM(int num, int threshold) {
     }
     cout << endl;
 }
+
 void AEE::extension(Node* p, string& D, int left, int right, int threshold, vector<EDExtractResult> &result) {
     vector<pair<string, int>>& leftStrs = p->leftStrs;
     vector<pair<string, int>>& rightStrs = p->rightStrs;
@@ -250,9 +244,6 @@ void AEE::extension(Node* p, string& D, int left, int right, int threshold, vect
     }
     int last = -1;
     j = 0;
-    // for (int k = 0; k <= 2*threshold; k++) {
-    //     M[0][k] = k - threshold > 0 ? k - threshold : threshold - k;
-    // }
     for (int i = 0; i < (int)leftStrs.size(); i++) {
         if (entity_EDend.find(leftStrs[i].second) == entity_EDend.end())
             continue;
@@ -298,8 +289,8 @@ void AEE::extension(Node* p, string& D, int left, int right, int threshold, vect
             for (int k = 0; k <= 2 * threshold2; k++) {
                 int ED = M[elLen][k];
                 if (ED <= threshold2) {
-                    for (auto& p : ED_end) {
-                        if (p.first + ED > threshold)
+                    for (auto& pair : ED_end) {
+                        if (pair.first + ED > threshold)
                             break;
 
                         int start = left + 1 - elLen + threshold2 - k;
@@ -308,20 +299,33 @@ void AEE::extension(Node* p, string& D, int left, int right, int threshold, vect
                             EDExtractResult res;
                             res.id = leftStrs[i].second;
                             res.pos = start;
-                            res.len = p.second - start + 1;
-                            // res.sim = p.first + ED;
-                            int realED = getEditDistance(entities[leftStrs[i].second], D.substr(res.pos, res.len), threshold);
-                            if (realED <= threshold) {
-                                res.sim = realED;
-                                result.push_back(res);
+                            res.len = pair.second - start + 1;
+                            long long HashCode = res.id * Hash[0] + res.pos * Hash[1] + res.len * Hash[2];
+                            if (resultHashSet.find(HashCode) == resultHashSet.end()) {
+                                int realED = getEditDistance(entities[leftStrs[i].second], D.substr(res.pos, res.len), threshold);
+                                if (realED <= threshold) {
+                                    res.sim = realED;
+                                    result.push_back(res);
+                                }
+                                resultHashSet.insert(HashCode);
                             }
-                            // if (realED != res.sim) {
-                            //     printf("real: %d, res.sim: %d\n", realED, res.sim);
-                            //     cout << entities[leftStrs[i].second] << " " << D.substr(res.pos, res.len) << endl;
+                            // res.sim = pair.first + ED;
+                            // int leftED = getEditDistance(leftStrs[i].first, D.substr(res.pos, left - res.pos + 1), threshold);
+                            // if (realED != pair.first + ED) {
+                                // cout << "****" << endl;
+                                // int elLen = leftStrs[i].first.length();
+                                // int emLen = p->depth;
+                                // int erLen = entities[leftStrs[i].second].length() - emLen - elLen;
+                                // int rightED = getEditDistance(entities[leftStrs[i].second].substr(elLen + emLen, erLen), D.substr(right, pair.second - right + 1), threshold);
+                                // if (erLen == pair.second - right + 1 + 2) {
+                                    // cout << rightED << endl;
+                                    // cout << "****" << endl;
+                                    // exit(0);
+                                // }
                             // }
                             // printf("l: id:%d (%s|%s) ed:%d\n",  res.id, leftStrs[i].first.c_str(),
                             //     D.substr(start, left - start + 1).c_str(), ED);
-                            // cout << "res: " << start << "," << p.second << " " << D.substr(start, res.len) << endl;
+                            // cout << "res: " << start << "," << pair.second << " " << D.substr(start, res.len) << endl;
                         }
                     }
                 }
@@ -332,6 +336,7 @@ void AEE::extension(Node* p, string& D, int left, int right, int threshold, vect
 }
 
 int AEE::getEditDistance(const string &A, const string &B, int threshold) {
+    // cout << A << " " << B << endl;
     int n = (int)A.length();
     int m = (int)B.length();
     if (abs(n - m) > threshold) return threshold + 1;
@@ -368,6 +373,7 @@ bool resultEqualED(const EDExtractResult &a, const EDExtractResult &b) {
 
 int AEE::aeeED(const char *document, unsigned threshold, vector<EDExtractResult> &result) {
     result.clear();
+    resultHashSet.clear();
     if (threshold != last_threshold) {
         if (root != NULL)
             delete root;
@@ -377,15 +383,14 @@ int AEE::aeeED(const char *document, unsigned threshold, vector<EDExtractResult>
 
     string doc(document);
     int len = (int)doc.length();
-    // vector<Node*> candidates;
 
     // KMP Match
     // buildNext();
-    // printTree(root, 0);
-    Node* p = root;
-    int i = 0;
+    // // printTree(root, 0);
+    // Node* p = root;
+    // int i = 0;
 
-    // while (i < len - (Lmin - (int)threshold) + 1) {
+    // while (i <= len - (Lmin - (int)threshold) + 1) {
     //     if (p->hasChild(doc[i])) {
     //         p = p->children[doc[i]];
     //         i ++;
@@ -402,13 +407,14 @@ int AEE::aeeED(const char *document, unsigned threshold, vector<EDExtractResult>
     // }
 
     // Naive Match
-    for (int i = 0; i < len ; i++) {
+    for (int i = 0; i <= len - (Lmin - (int)threshold) + 1; i++) {
         Node* p = root;
         int j = i;
         while (p->hasChild(doc[j])) {
             p = p->children[doc[j]];
             if (p->isLeaf) {
-                // cout << doc.substr(i, j-i+1) << endl;
+                // cout << "+ " << doc.substr(i, j-i+1) << endl;
+
                 extension(p, doc, i - 1, j + 1, (int)threshold, result);
 
             }
@@ -416,6 +422,6 @@ int AEE::aeeED(const char *document, unsigned threshold, vector<EDExtractResult>
         }
     }
     sort(result.begin(), result.end(), resultCmpED);
-    result.erase(unique(result.begin(), result.end(), resultEqualED), result.end());
+    // result.erase(unique(result.begin(), result.end(), resultEqualED), result.end());
     return SUCCESS;
 }

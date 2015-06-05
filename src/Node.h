@@ -15,6 +15,7 @@ public:
     char c;
     int depth;
     unordered_map<char, Node*> children;
+    // Node* children[]
     bool isLeaf;
     bool hasChild(char c);
     Node(Node* p,  char c);
