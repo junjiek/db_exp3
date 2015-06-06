@@ -6,7 +6,7 @@
 #include <unordered_map>
 using namespace std;
 
-const int ALPHABET = 26+10+3;
+const int ALPHABET = 26+10+1;
 
 int alphaToNum(const char c);
 char numToAlpha(const int num);

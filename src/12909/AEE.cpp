@@ -308,15 +308,15 @@ void AEE::extension(Node* p, string& D, int left, int right, int threshold, vect
                             res.id = leftStrs[i].second;
                             res.pos = start;
                             res.len = pair.second - start + 1;
-                            long long HashCode = res.id * Hash[0] + res.pos * Hash[1] + res.len * Hash[2];
-                            if (resultHashSet.find(HashCode) == resultHashSet.end()) {
+                            // long long HashCode = res.id * Hash[0] + res.pos * Hash[1] + res.len * Hash[2];
+                            // if (resultHashSet.find(HashCode) == resultHashSet.end()) {
                                 int realED = getEditDistance(entities[leftStrs[i].second], D.substr(res.pos, res.len), threshold);
                                 if (realED <= threshold) {
                                     res.sim = realED;
-                                    resultHashSet.insert(HashCode);
+                                    // resultHashSet.insert(HashCode);
                                     result.push_back(res);
                                 }
-                            }
+                            // }
                             // res.sim = pair.first + ED;
                             // int leftED = getEditDistance(leftStrs[i].first, D.substr(res.pos, left - res.pos + 1), threshold);
                             // if (realED != pair.first + ED) {
@@ -399,8 +399,8 @@ int AEE::aeeED(const char *document, unsigned threshold, vector<EDExtractResult>
     // Node* p = root;
     // for (int i = 0; i <= len - (Lmin - (int)threshold) + 1; i++) {
     //     int c = alphaToNum(doc[i]);
-    //     // if (c < 0)
-    //         // continue;
+    //     if (c < 0)
+    //         continue;
     //     while (p != root && p->children[c] == NULL)
     //         p = p->next;
     //     if (p->children[c]) {
@@ -416,23 +416,25 @@ int AEE::aeeED(const char *document, unsigned threshold, vector<EDExtractResult>
     // Naive Match
     for (int i = 0; i <= len - (Lmin - (int)threshold) + 1; i++) {
         int ci = alphaToNum(doc[i]);
-        // if (ci < 0) continue;
+        if (ci < 0) continue;
         Node* p = root->children[ci];
         int j = i;
         while (p) {
             if (p->isLeaf) {
                 // cout << "+ " << doc.substr(i, j-i+1) << endl;
+
                 extension(p, doc, i - 1, j + 1, (int)threshold, result);
 
             }
             j++;
             int cj = alphaToNum(doc[j]);
-            // if (cj > 0)
+            if (cj > 0)
                 p = p->children[cj];
-            // else
-                // break;
+            else
+                break;
         }
     }
     sort(result.begin(), result.end(), resultCmpED);
+    result.erase(unique(result.begin(), result.end(), resultEqualED), result.end());
     return SUCCESS;
 }
