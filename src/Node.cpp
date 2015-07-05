@@ -16,7 +16,7 @@ int alphaToNum(const char c) {
         // cout << c << endl;
         return c - 'a';
     // cout << "lala" << endl;
-    // return -1;
+    return -1;
 
 }
 

@@ -46,7 +46,7 @@ public:
     ~AEE();
     int createIndex(const char *entity_file_name);
     int aeeJaccard(const char *document, double threshold, std::vector<JaccardExtractResult> &result);
-    int aeeED(const char *document, unsigned threshold, std::vector<EDExtractResult> &result);
+    int aeeED(const char *document, unsigned threshold, std::vector<EDExtractResult> &result, bool flag);
 };
 
 #endif
